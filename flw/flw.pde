@@ -213,6 +213,7 @@ void setup() {
   rand_idx = (int)random(0, arr.length); 
   //rand_idx = 0;
   generateOutFile();
+  generateOutFileArray();
 }
 
 void generateOutFile() {
@@ -258,6 +259,105 @@ void generateOutFile() {
     e.printStackTrace();
   }
 }
+
+void startNewArray(int cnt)
+{
+  
+}
+
+void writeBytesToArray(byte[]b, FileWriter out)
+{
+  for (int i = 0; i < b.length; i++) {
+    writeByteToArray("'" + (char)b[i] + "'", out);
+  } 
+}
+
+long bytecounter = 0;
+
+void writeByteToArray(String s, FileWriter out)
+{
+  if (out != null) {
+    try {
+      //out.write("'");
+      out.write(s);
+      out.write(",\n");
+      
+      bytecounter++;
+      
+      if (bytecounter == 30000)
+      {
+        out.write("};\n\n");
+        out.write("const uint16_t flw_data_1_size = " + bytecounter + ";\n");
+        out.write("const uint8_t flw_data_2[] PROGMEM = { \n");
+      }
+
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  } 
+}
+
+void generateOutFileArray() {
+  try {
+    FileWriter out = new FileWriter("flw_db.c");
+   
+    out.write("// Generated Four Letter Word Database\n");
+    out.write("// https://github.com/perjg/fourletterword\n");
+    out.write("#include <avr/pgmspace.h>");
+    out.write("\n");
+    out.write("const uint8_t flw_data_1[] PROGMEM = { \n");    
+    
+    print("Array length: " + arr.length);
+    
+    for (int i = 0; i < arr.length; i++) {      
+      WordEntry we = arr[i];
+     
+      writeBytesToArray(we.m_word.getBytes(), out);
+      
+      //out.write(we.m_word.getBytes());
+      
+      if (we.size() > 255) println("uh-oh");
+      
+      out.write(Integer.toString(we.size()) + ",\n");
+      
+      for (int j = 0; j < we.size(); j++) {
+        int array_index = we.elementAt(j);
+        int byte_offset = arr[array_index].m_offset;
+        
+        if (byte_offset > 0xFFFF) println("uh-oh");
+        
+        if (byte_offset > 255) {
+          int high = (int)(byte_offset >> 8);
+          int low  = (int)(byte_offset & 0xFF);
+          
+          
+          writeByteToArray(Integer.toString(high), out);
+          writeByteToArray(Integer.toString(low),  out);
+        }
+        else {
+          int high = 0;
+          int low  = (int)byte_offset;
+          writeByteToArray(Integer.toString(high), out);
+          writeByteToArray(Integer.toString(low),  out);
+        }
+      }
+      
+      int endmarker = 0xFF;
+      writeByteToArray(Integer.toString(endmarker), out);
+      writeByteToArray(Integer.toString(endmarker), out);
+    }
+    
+    out.write("\n};\n");
+    out.write("const uint16_t flw_data_2_size = " + (bytecounter - 30000) + ";\n");
+    
+    out.close();
+  }
+  catch (IOException e) {
+    e.printStackTrace();
+  }
+}
+
 
 void draw() {
   WordEntry we = arr[rand_idx];
